@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle de Contêiner</title>
+
+  <style>
+    body{
+      font-family: Arial, Helvetica, sans-serif;
+      margin:0;
+      padding:10px;
+      background:#f2f2f2;
+    }
+    h1{
+      text-align:center;
+    }
+    button{
+      padding:8px;
+      border:none;
+      border-radius:6px;
+      margin:2px;
+    }
+    .add{background:#2ecc71;color:#fff;}
+    .delete{background:#e74c3c;color:#fff;}
+    .out{background:#3498db;color:#fff;}
+    .mount{background:#f39c12;color:#fff;}
+    .whats{background:#25d366;color:#fff;}
+    .pdf{background:#555;color:#fff;}
+
+    input, select{
+      width:100%;
+      padding:6px;
+      margin-top:5px;
+      margin-bottom:5px;
+    }
+    .top-actions{
+      display:flex;
+      gap:5px;
+      margin-bottom:10px;
+    }
+    .small{
+      font-size:12px;
+      color:gray;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Pátio de Contêiner</h1>
+
+<div class="top-actions">
+  <button class="add" onclick="novo()">+ Novo</button>
+  <button class="pdf" onclick="gerarPDF()">Exportar PDF</button>
+</div>
+
+<label for="busca"></label><input type="text" id="busca" placeholder="Buscar número..." onkeyup="render()">
+
+<div id="lista"></div>
+
+<script>
+  let containers = JSON.parse(localStorage.getItem("containers")) || [];
+
+  function salvar(){
+    localStorage.setItem("containers", JSON.stringify(containers));
+  }
+
+  function novo(){
+    let numero = prompt("Número do contêiner:");
+    if(!numero) return;
+
+    containers.push({
+      id: Date.now(),
+      numero: numero.toUpperCase(),
+      localizacao: "",
+      status: "patio",
+      saida: null
+    });
+
+    salvar();
+    render();
+  }
+
+  function remover(id){
+    if(!confirm("Remover contêiner?")) return;
+    containers = containers.filter(c => c.id !== id);
+    salvar();
+    render();
+  }
+
+  function marcarSaida(id){
+    containers = containers.map(c=>{
+      if(c.id===id){
+        c.status="saiu";
+        c.saida = new Date().toLocaleTimeString();
+      }
+      return c;
+    });
+    salvar();
+    render();
+  }
+
+  function montagem(id){
+    containers = containers.map(c=>{
+      if(c.id===id){
+        c.status = c.status==="montagem" ? "patio" : "montagem";
+      }
+      return c;
+    });
+    salvar();
+    render();
+  }
+
+  function atualizarLocal(id, valor){
+    containers = containers.map(c=>{
+      if(c.id===id) c.localizacao = valor;
+      return c;
+    });
+    salvar();
+  }
+
+  function whatsapp(c){
+    let msg =
+            `Contêiner disponível para agendamento:
+
+Número: ${c.numero}
+Localização: ${c.localizacao || "-"}
+Status: ${c.status}`;
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+  }
+
+  function gerarPDF(){
+    let texto = "RELATÓRIO DE CONTÊINERES\n\n";
+    containers.forEach((c,i)=>{
+      texto += `${i+1} - ${c.numero} | ${c.localizacao || "-"} | ${c.status}`;
+      if(c.saida) texto += ` ${c.saida}`;
+      texto += "\n";
+    });
+
+    let w = window.open("");
+    w.document.write("<pre>"+texto+"</pre>");
+    w.print();
+  }
+
+  function render(){
+    let busca = document.getElementById("busca").value.toUpperCase();
+    let lista = document.getElementById("lista");
+    lista.innerHTML="";
+
+    let filtrados = containers
+            .filter(c => c.numero.includes(busca))
+            .sort((a,b)=> a.numero.localeCompare(b.numero));
+
+    filtrados.forEach((c,i)=>{
+      let div = document.createElement("div");
+      div.className="card";
+
+      div.innerHTML = `
+<b>${i+1} - ${c.numero}</b>
+<div class="small">Status: ${c.status} ${c.saida? "| Saiu "+c.saida:""}</div>
+
+<input placeholder="Localização"
+value="${c.localizacao || ""}"
+onchange="atualizarLocal(${c.id}, this.value)">
+
+<button class="mount" onclick="montagem(${c.id})">🔧 Montagem</button>
+<button class="out" onclick="marcarSaida(${c.id})">Saiu</button>
+<button class="whats" onclick='whatsapp(${JSON.stringify(c)})'>Whats</button>
+<button class="delete" onclick="remover(${c.id})">Excluir</button>
+        `;
+
+      lista.appendChild(div);
+    });
+  }
+
+  render();
+</script>
+
+</body>
+</html>
