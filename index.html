@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Controle de Contêiner</title>
+  <title>Pátio de Contêiner</title>
 
   <style>
     body{
@@ -12,21 +12,51 @@
       padding:10px;
       background:#f2f2f2;
     }
-    h1{
-      text-align:center;
-    }
+    h1{text-align:center;}
+
     button{
       padding:8px;
       border:none;
       border-radius:6px;
       margin:2px;
     }
+
     .add{background:#2ecc71;color:#fff;}
     .delete{background:#e74c3c;color:#fff;}
     .out{background:#3498db;color:#fff;}
     .mount{background:#f39c12;color:#fff;}
-    .whats{background:#25d366;color:#fff;}
     .pdf{background:#555;color:#fff;}
+    .filter{background:#34495e;color:#fff;}
+
+    .card{
+      background:#fff;
+      padding:10px;
+      margin-top:8px;
+      border-radius:8px;
+      box-shadow:0 2px 3px rgba(0,0,0,0.1);
+      border-left:8px solid transparent;
+    }
+
+    /* CORES DE RISCO */
+    .risk-demurrage{border-color:#c0392b;}
+    .risk-deadline{border-color:#8e44ad;}
+    .risk-alianca{border-color:#2980b9;}
+    .risk-login{border-color:#27ae60;}
+
+    .tag{
+      font-size:11px;
+      padding:2px 6px;
+      border-radius:4px;
+      margin-right:4px;
+      color:#fff;
+    }
+
+    .vazio{background:#7f8c8d;}
+    .cheio{background:#2c3e50;}
+    .demurrage{background:#c0392b;}
+    .deadline{background:#8e44ad;}
+    .alianca{background:#2980b9;}
+    .login{background:#27ae60;}
 
     input, select{
       width:100%;
@@ -34,14 +64,17 @@
       margin-top:5px;
       margin-bottom:5px;
     }
-    .top-actions{
-      display:flex;
-      gap:5px;
-      margin-bottom:10px;
-    }
+
     .small{
       font-size:12px;
       color:gray;
+    }
+
+    .top-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:5px;
+      margin-bottom:10px;
     }
   </style>
 </head>
@@ -52,15 +85,19 @@
 
 <div class="top-actions">
   <button class="add" onclick="novo()">+ Novo</button>
-  <button class="pdf" onclick="gerarPDF()">Exportar PDF</button>
+  <button class="filter" onclick="filtro='todos';render()">Todos</button>
+  <button class="filter" onclick="filtro='demurrage';render()">Demurrage</button>
+  <button class="filter" onclick="filtro='deadline';render()">Deadline</button>
+  <button class="pdf" onclick="gerarPDF()">PDF</button>
 </div>
 
-<label for="busca"></label><input type="text" id="busca" placeholder="Buscar número..." onkeyup="render()">
+<input type="text" id="busca" placeholder="Buscar número..." onkeyup="render()">
 
 <div id="lista"></div>
 
 <script>
   let containers = JSON.parse(localStorage.getItem("containers")) || [];
+  let filtro = "todos";
 
   function salvar(){
     localStorage.setItem("containers", JSON.stringify(containers));
@@ -73,9 +110,14 @@
     containers.push({
       id: Date.now(),
       numero: numero.toUpperCase(),
-      localizacao: "",
-      status: "patio",
-      saida: null
+      localizacao:"",
+      status:"patio",
+      saida:null,
+      tipoCarga:"vazio",
+      demurrage:false,
+      deadline:false,
+      alianca:false,
+      login:false
     });
 
     salvar();
@@ -83,8 +125,8 @@
   }
 
   function remover(id){
-    if(!confirm("Remover contêiner?")) return;
-    containers = containers.filter(c => c.id !== id);
+    if(!confirm("Remover?")) return;
+    containers = containers.filter(c=>c.id!==id);
     salvar();
     render();
   }
@@ -93,7 +135,7 @@
     containers = containers.map(c=>{
       if(c.id===id){
         c.status="saiu";
-        c.saida = new Date().toLocaleTimeString();
+        c.saida=new Date().toLocaleTimeString();
       }
       return c;
     });
@@ -104,7 +146,7 @@
   function montagem(id){
     containers = containers.map(c=>{
       if(c.id===id){
-        c.status = c.status==="montagem" ? "patio" : "montagem";
+        c.status = c.status==="montagem"?"patio":"montagem";
       }
       return c;
     });
@@ -112,32 +154,54 @@
     render();
   }
 
-  function atualizarLocal(id, valor){
+  function atualizarLocal(id,valor){
     containers = containers.map(c=>{
-      if(c.id===id) c.localizacao = valor;
+      if(c.id===id) c.localizacao=valor;
       return c;
     });
     salvar();
   }
 
-  function whatsapp(c){
-    let msg =
-            `Contêiner disponível para agendamento:
+  function alterarTipo(id,valor){
+    containers = containers.map(c=>{
+      if(c.id===id) c.tipoCarga=valor;
+      return c;
+    });
+    salvar();
+    render();
+  }
 
-Número: ${c.numero}
-Localização: ${c.localizacao || "-"}
-Status: ${c.status}`;
-
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+  function toggleFlag(id,flag){
+    containers = containers.map(c=>{
+      if(c.id===id) c[flag]=!c[flag];
+      return c;
+    });
+    salvar();
+    render();
   }
 
   function gerarPDF(){
     let texto = "RELATÓRIO DE CONTÊINERES\n\n";
-    containers.forEach((c,i)=>{
-      texto += `${i+1} - ${c.numero} | ${c.localizacao || "-"} | ${c.status}`;
-      if(c.saida) texto += ` ${c.saida}`;
-      texto += "\n";
-    });
+
+    texto += "CHEIOS\n";
+    containers.filter(c=>c.tipoCarga==="cheio")
+            .forEach(c=> texto+=`${c.numero}\n`);
+
+    texto += "\nVAZIOS\n";
+    containers.filter(c=>c.tipoCarga==="vazio")
+            .forEach(c=> texto+=`${c.numero}\n`);
+
+    texto += "\nALIANÇA\n";
+    containers.filter(c=>c.alianca)
+            .forEach(c=> texto+=`${c.numero}\n`);
+
+    texto += "\nLOGIN\n";
+    containers.filter(c=>c.login)
+            .forEach(c=> texto+=`${c.numero}\n`);
+
+    texto += "\nDEMURRAGE\n";
+    containers.filter(c=>c.demurrage)
+            .forEach(c=> texto+=`${c.numero}\n`);
 
     let w = window.open("");
     w.document.write("<pre>"+texto+"</pre>");
@@ -149,25 +213,54 @@ Status: ${c.status}`;
     let lista = document.getElementById("lista");
     lista.innerHTML="";
 
-    let filtrados = containers
-            .filter(c => c.numero.includes(busca))
-            .sort((a,b)=> a.numero.localeCompare(b.numero));
+    let filtrados = containers.filter(c=>{
+      if(!c.numero.includes(busca)) return false;
+      if(filtro==="demurrage") return c.demurrage;
+      if(filtro==="deadline") return c.deadline;
+      return true;
+    })
+            .sort((a,b)=>a.numero.localeCompare(b.numero));
 
     filtrados.forEach((c,i)=>{
       let div = document.createElement("div");
       div.className="card";
 
+      // prioridade
+      if(c.demurrage) div.classList.add("risk-demurrage");
+      else if(c.deadline) div.classList.add("risk-deadline");
+      else if(c.alianca) div.classList.add("risk-alianca");
+      else if(c.login) div.classList.add("risk-login");
+
+      let tags = `
+<span class="tag ${c.tipoCarga==="vazio"?"vazio":"cheio"}">${c.tipoCarga.toUpperCase()}</span>
+${c.demurrage?'<span class="tag demurrage">DEMURRAGE</span>':""}
+${c.deadline?'<span class="tag deadline">DEADLINE</span>':""}
+${c.alianca?'<span class="tag alianca">ALIANÇA</span>':""}
+${c.login?'<span class="tag login">LOGIN</span>':""}
+`;
+
       div.innerHTML = `
 <b>${i+1} - ${c.numero}</b>
-<div class="small">Status: ${c.status} ${c.saida? "| Saiu "+c.saida:""}</div>
+<div>${tags}</div>
+<div class="small">Status: ${c.status} ${c.saida?"| "+c.saida:""}</div>
 
 <input placeholder="Localização"
 value="${c.localizacao || ""}"
 onchange="atualizarLocal(${c.id}, this.value)">
 
+<select onchange="alterarTipo(${c.id}, this.value)">
+    <option value="vazio" ${c.tipoCarga==="vazio"?"selected":""}>Vazio</option>
+    <option value="cheio" ${c.tipoCarga==="cheio"?"selected":""}>Cheio</option>
+</select>
+
+<button onclick="toggleFlag(${c.id},'demurrage')">Demurrage</button>
+<button onclick="toggleFlag(${c.id},'deadline')">Deadline</button>
+<button onclick="toggleFlag(${c.id},'alianca')">Aliança</button>
+<button onclick="toggleFlag(${c.id},'login')">Login</button>
+
+<br>
 <button class="mount" onclick="montagem(${c.id})">🔧 Montagem</button>
 <button class="out" onclick="marcarSaida(${c.id})">Saiu</button>
-<button class="whats" onclick='whatsapp(${JSON.stringify(c)})'>Whats</button>
 <button class="delete" onclick="remover(${c.id})">Excluir</button>
         `;
 
