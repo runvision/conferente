@@ -1,274 +1,365 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pátio de Contêiner</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Pátio</title>
 
-  <style>
-    body{
-      font-family: Arial, Helvetica, sans-serif;
-      margin:0;
-      padding:10px;
-      background:#f2f2f2;
-    }
-    h1{text-align:center;}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-    button{
-      padding:8px;
-      border:none;
-      border-radius:6px;
-      margin:2px;
-    }
+<style>
+:root{
+--azul:#1565c0;
+--verde:#2e7d32;
+--vermelho:#c62828;
+--laranja:#ef6c00;
+--cinza:#eceff1;
+}
 
-    .add{background:#2ecc71;color:#fff;}
-    .delete{background:#e74c3c;color:#fff;}
-    .out{background:#3498db;color:#fff;}
-    .mount{background:#f39c12;color:#fff;}
-    .pdf{background:#555;color:#fff;}
-    .filter{background:#34495e;color:#fff;}
+body{
+font-family: Arial, Helvetica, sans-serif;
+margin:0;
+background:var(--cinza);
+padding:12px;
+}
 
-    .card{
-      background:#fff;
-      padding:10px;
-      margin-top:8px;
-      border-radius:8px;
-      box-shadow:0 2px 3px rgba(0,0,0,0.1);
-      border-left:8px solid transparent;
-    }
+h1{ text-align:center; }
 
-    /* CORES DE RISCO */
-    .risk-demurrage{border-color:#c0392b;}
-    .risk-deadline{border-color:#8e44ad;}
-    .risk-alianca{border-color:#2980b9;}
-    .risk-login{border-color:#27ae60;}
+.box{
+background:white;
+padding:10px;
+border-radius:10px;
+margin-bottom:10px;
+}
 
-    .tag{
-      font-size:11px;
-      padding:2px 6px;
-      border-radius:4px;
-      margin-right:4px;
-      color:#fff;
-    }
+input,select,button{
+width:100%;
+padding:10px;
+margin-top:6px;
+font-size:15px;
+border-radius:8px;
+border:1px solid #ccc;
+}
 
-    .vazio{background:#7f8c8d;}
-    .cheio{background:#2c3e50;}
-    .demurrage{background:#c0392b;}
-    .deadline{background:#8e44ad;}
-    .alianca{background:#2980b9;}
-    .login{background:#27ae60;}
+button{
+border:none;
+background:var(--azul);
+color:white;
+}
 
-    input, select{
-      width:100%;
-      padding:6px;
-      margin-top:5px;
-      margin-bottom:5px;
-    }
+.urgencias{
+background:#fff3e0;
+border-left:6px solid var(--laranja);
+padding:8px;
+border-radius:8px;
+margin-bottom:10px;
+font-size:14px;
+}
 
-    .small{
-      font-size:12px;
-      color:gray;
-    }
+.card{
+border-radius:10px;
+padding:10px;
+margin-bottom:10px;
+background:white;
+box-shadow:0 2px 4px rgba(0,0,0,0.08);
+}
 
-    .top-actions{
-      display:flex;
-      flex-wrap:wrap;
-      gap:5px;
-      margin-bottom:10px;
-    }
-  </style>
+.card.demurrage{ border-left:6px solid var(--vermelho); }
+.card.deadline{ border-left:6px solid var(--laranja); }
+.card.saiu{ opacity:0.55; }
+
+.tag{
+display:inline-block;
+padding:3px 6px;
+border-radius:6px;
+font-size:12px;
+margin-right:4px;
+background:#ddd;
+}
+
+.vazio{ background:#b3e5fc; }
+.cheio{ background:#ffe082; }
+.login{ background:#c8e6c9; }
+.alianca{ background:#d1c4e9; }
+
+.small{ font-size:12px; color:#555; }
+
+.linha-botoes{
+margin-top:6px;
+display:flex;
+gap:6px;
+}
+
+.linha-botoes button{
+flex:1;
+font-size:12px;
+padding:8px;
+}
+
+.remove{ background:var(--vermelho); }
+.whats{ background:var(--verde); }
+.foto{ background:#6a1b9a; }
+
+img{
+width:100%;
+margin-top:6px;
+border-radius:8px;
+}
+
+.numero-seq{
+font-size:12px;
+font-weight:bold;
+color:#555;
+}
+</style>
 </head>
 
 <body>
 
-<h1>Pátio de Contêiner</h1>
+<h1>Controle de Pátio</h1>
 
-<div class="top-actions">
-  <button class="add" onclick="novo()">+ Novo</button>
-  <button class="filter" onclick="filtro='todos';render()">Todos</button>
-  <button class="filter" onclick="filtro='demurrage';render()">Demurrage</button>
-  <button class="filter" onclick="filtro='deadline';render()">Deadline</button>
-  <button class="pdf" onclick="gerarPDF()">PDF</button>
+<div class="box">
+<input id="numero" placeholder="Número do contêiner">
+
+<select id="tipo">
+<option>Vazio</option>
+<option>Cheio</option>
+</select>
+
+<select id="empresa">
+<option>Login</option>
+<option>Aliança</option>
+</select>
+
+<input id="local" placeholder="Localização">
+
+<select id="urgencia">
+<option value="">Sem urgência</option>
+<option value="Demurrage">Demurrage</option>
+<option value="Deadline">Deadline</option>
+</select>
+
+<button onclick="adicionar()">Adicionar</button>
 </div>
 
-<input type="text" id="busca" placeholder="Buscar número..." onkeyup="render()">
+<div class="box">
+<button onclick="pdfCompleto()">Gerar PDF Profissional</button>
+</div>
+
+<div class="urgencias" id="painelUrgencias"></div>
 
 <div id="lista"></div>
 
 <script>
-  let containers = JSON.parse(localStorage.getItem("containers")) || [];
-  let filtro = "todos";
+let db = JSON.parse(localStorage.getItem("patio_db") || "[]");
 
-  function salvar(){
-    localStorage.setItem("containers", JSON.stringify(containers));
-  }
+function salvar(){
+localStorage.setItem("patio_db", JSON.stringify(db));
+}
 
-  function novo(){
-    let numero = prompt("Número do contêiner:");
-    if(!numero) return;
+function agora(){
+return new Date().toLocaleString();
+}
 
-    containers.push({
-      id: Date.now(),
-      numero: numero.toUpperCase(),
-      localizacao:"",
-      status:"patio",
-      saida:null,
-      tipoCarga:"vazio",
-      demurrage:false,
-      deadline:false,
-      alianca:false,
-      login:false
-    });
+/* 🔥 FUNÇÃO CENTRAL DE ORDENAÇÃO */
+function ordenados(){
+return [...db].sort((a,b)=> a.numero.localeCompare(b.numero));
+}
 
-    salvar();
-    render();
-  }
+function adicionar(){
+let numero = document.getElementById("numero").value.trim().toUpperCase();
+if(!numero) return alert("Informe o número");
 
-  function remover(id){
-    if(!confirm("Remover?")) return;
-    containers = containers.filter(c=>c.id!==id);
-    salvar();
-    render();
-  }
+db.push({
+id: Date.now(),
+numero,
+tipo: document.getElementById("tipo").value,
+empresa: document.getElementById("empresa").value,
+local: document.getElementById("local").value,
+urgencia: document.getElementById("urgencia").value,
+foto:null,
+entrada: agora(),
+saiu:false,
+saida:null,
+motorista:null
+});
 
-  function marcarSaida(id){
-    containers = containers.map(c=>{
-      if(c.id===id){
-        c.status="saiu";
-        c.saida=new Date().toLocaleTimeString();
-      }
-      return c;
-    });
-    salvar();
-    render();
-  }
+document.getElementById("numero").value="";
+document.getElementById("local").value="";
+document.getElementById("urgencia").value="";
+salvar();
+render();
+}
 
-  function montagem(id){
-    containers = containers.map(c=>{
-      if(c.id===id){
-        c.status = c.status==="montagem"?"patio":"montagem";
-      }
-      return c;
-    });
-    salvar();
-    render();
-  }
+function saida(id){
+let nome = prompt("Nome do motorista:");
+if(!nome) return;
 
-  function atualizarLocal(id,valor){
-    containers = containers.map(c=>{
-      if(c.id===id) c.localizacao=valor;
-      return c;
-    });
-    salvar();
-  }
+let c = db.find(x=>x.id===id);
+c.saiu = true;
+c.saida = agora();
+c.motorista = nome;
 
-  function alterarTipo(id,valor){
-    containers = containers.map(c=>{
-      if(c.id===id) c.tipoCarga=valor;
-      return c;
-    });
-    salvar();
-    render();
-  }
+salvar();
+render();
+}
 
-  function toggleFlag(id,flag){
-    containers = containers.map(c=>{
-      if(c.id===id) c[flag]=!c[flag];
-      return c;
-    });
-    salvar();
-    render();
-  }
+function remover(id){
+db = db.filter(x=>x.id!==id);
+salvar();
+render();
+}
 
-  function gerarPDF(){
-    let texto = "RELATÓRIO DE CONTÊINERES\n\n";
+function whats(id){
+let c = db.find(x=>x.id===id);
+let msg =
+`Contêiner: ${c.numero}
+Tipo: ${c.tipo}
+Empresa: ${c.empresa}
+Local: ${c.local}
+${c.urgencia ? "⚠️ "+c.urgencia : ""}`;
 
-    texto += "CHEIOS\n";
-    containers.filter(c=>c.tipoCarga==="cheio")
-            .forEach(c=> texto+=`${c.numero}\n`);
+window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+}
 
-    texto += "\nVAZIOS\n";
-    containers.filter(c=>c.tipoCarga==="vazio")
-            .forEach(c=> texto+=`${c.numero}\n`);
+function tirarFoto(id){
+let input = document.createElement("input");
+input.type="file";
+input.accept="image/*";
+input.capture="environment";
 
-    texto += "\nALIANÇA\n";
-    containers.filter(c=>c.alianca)
-            .forEach(c=> texto+=`${c.numero}\n`);
+input.onchange = e=>{
+let file = e.target.files[0];
+let reader = new FileReader();
+reader.onload = ()=>{
+let c = db.find(x=>x.id===id);
+c.foto = reader.result;
+salvar();
+render();
+};
+reader.readAsDataURL(file);
+};
 
-    texto += "\nLOGIN\n";
-    containers.filter(c=>c.login)
-            .forEach(c=> texto+=`${c.numero}\n`);
+input.click();
+}
 
-    texto += "\nDEMURRAGE\n";
-    containers.filter(c=>c.demurrage)
-            .forEach(c=> texto+=`${c.numero}\n`);
+/* PAINEL */
+function atualizarUrgencias(){
+let u = ordenados().filter(c=>c.urgencia && !c.saiu);
 
-    let w = window.open("");
-    w.document.write("<pre>"+texto+"</pre>");
-    w.print();
-  }
+if(!u.length){
+document.getElementById("painelUrgencias").innerHTML =
+"<b>Painel de Urgências:</b> Nenhuma.";
+return;
+}
 
-  function render(){
-    let busca = document.getElementById("busca").value.toUpperCase();
-    let lista = document.getElementById("lista");
-    lista.innerHTML="";
+let html = "<b>Painel de Urgências:</b><br>";
+u.forEach((c,i)=>{
+html += `${i+1}. ${c.numero} (${c.urgencia})<br>`;
+});
 
-    let filtrados = containers.filter(c=>{
-      if(!c.numero.includes(busca)) return false;
-      if(filtro==="demurrage") return c.demurrage;
-      if(filtro==="deadline") return c.deadline;
-      return true;
-    })
-            .sort((a,b)=>a.numero.localeCompare(b.numero));
+document.getElementById("painelUrgencias").innerHTML = html;
+}
 
-    filtrados.forEach((c,i)=>{
-      let div = document.createElement("div");
-      div.className="card";
+/* RENDER */
+function render(){
+atualizarUrgencias();
 
-      // prioridade
-      if(c.demurrage) div.classList.add("risk-demurrage");
-      else if(c.deadline) div.classList.add("risk-deadline");
-      else if(c.alianca) div.classList.add("risk-alianca");
-      else if(c.login) div.classList.add("risk-login");
+let lista = document.getElementById("lista");
+lista.innerHTML="";
 
-      let tags = `
-<span class="tag ${c.tipoCarga==="vazio"?"vazio":"cheio"}">${c.tipoCarga.toUpperCase()}</span>
-${c.demurrage?'<span class="tag demurrage">DEMURRAGE</span>':""}
-${c.deadline?'<span class="tag deadline">DEADLINE</span>':""}
-${c.alianca?'<span class="tag alianca">ALIANÇA</span>':""}
-${c.login?'<span class="tag login">LOGIN</span>':""}
+ordenados().forEach((c,i)=>{
+let div = document.createElement("div");
+div.className="card";
+
+if(c.urgencia==="Demurrage") div.classList.add("demurrage");
+if(c.urgencia==="Deadline") div.classList.add("deadline");
+if(c.saiu) div.classList.add("saiu");
+
+div.innerHTML=`
+<div class="numero-seq">#${i+1}</div>
+<b>${c.numero}</b><br>
+
+<span class="tag ${c.tipo==='Vazio'?'vazio':'cheio'}">${c.tipo}</span>
+<span class="tag ${c.empresa==='Login'?'login':'alianca'}">${c.empresa}</span>
+${c.urgencia?`<span class="tag">${c.urgencia}</span>`:""}
+
+<div>Local: ${c.local}</div>
+<div class="small">Entrada: ${c.entrada}</div>
+${c.saida?`<div class="small">Saída: ${c.saida}</div>`:""}
+${c.motorista?`<div class="small">Motorista: ${c.motorista}</div>`:""}
+
+${c.foto?`<img src="${c.foto}">`:""}
+
+<div class="linha-botoes">
+<button onclick="saida(${c.id})">Saída</button>
+<button class="foto" onclick="tirarFoto(${c.id})">Foto</button>
+<button class="whats" onclick="whats(${c.id})">Whats</button>
+<button class="remove" onclick="remover(${c.id})">Remover</button>
+</div>
 `;
 
-      div.innerHTML = `
-<b>${i+1} - ${c.numero}</b>
-<div>${tags}</div>
-<div class="small">Status: ${c.status} ${c.saida?"| "+c.saida:""}</div>
+lista.appendChild(div);
+});
+}
 
-<input placeholder="Localização"
-value="${c.localizacao || ""}"
-onchange="atualizarLocal(${c.id}, this.value)">
+/* PDF */
+function pdfCompleto(){
+const { jsPDF } = window.jspdf;
+let doc = new jsPDF();
 
-<select onchange="alterarTipo(${c.id}, this.value)">
-    <option value="vazio" ${c.tipoCarga==="vazio"?"selected":""}>Vazio</option>
-    <option value="cheio" ${c.tipoCarga==="cheio"?"selected":""}>Cheio</option>
-</select>
+doc.setFontSize(16);
+doc.text("Relatório Operacional de Contêineres", 105, 15, {align:"center"});
+doc.setFontSize(10);
+doc.text("Gerado em: " + agora(), 10, 22);
 
-<button onclick="toggleFlag(${c.id},'demurrage')">Demurrage</button>
-<button onclick="toggleFlag(${c.id},'deadline')">Deadline</button>
-<button onclick="toggleFlag(${c.id},'alianca')">Aliança</button>
-<button onclick="toggleFlag(${c.id},'login')">Login</button>
+let y = 30;
 
-<br>
-<button class="mount" onclick="montagem(${c.id})">🔧 Montagem</button>
-<button class="out" onclick="marcarSaida(${c.id})">Saiu</button>
-<button class="delete" onclick="remover(${c.id})">Excluir</button>
-        `;
+ordenados().forEach((c,i)=>{
+doc.setFontSize(11);
+doc.text(`#${i+1} - ${c.numero}`,10,y);
+y+=6;
 
-      lista.appendChild(div);
-    });
-  }
+doc.setFontSize(10);
+doc.text(`Tipo: ${c.tipo} | Empresa: ${c.empresa}`,10,y);
+y+=6;
 
-  render();
+doc.text(`Localização: ${c.local}`,10,y);
+y+=6;
+
+doc.text(`Entrada: ${c.entrada}`,10,y);
+y+=6;
+
+if(c.urgencia){
+doc.text(`Urgência: ${c.urgencia}`,10,y);
+y+=6;
+}
+
+if(c.saiu){
+doc.text(`Saída: ${c.saida}`,10,y);
+y+=6;
+doc.text(`Motorista: ${c.motorista || "-"}`,10,y);
+y+=6;
+}
+
+if(c.foto){
+try{
+doc.addImage(c.foto,"JPEG",130,y-30,60,40);
+}catch(e){}
+}
+
+y+=12;
+
+if(y>260){
+doc.addPage();
+y=20;
+}
+});
+
+doc.save("relatorio_operacional.pdf");
+}
+
+render();
 </script>
 
 </body>
