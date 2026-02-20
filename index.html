@@ -3,363 +3,220 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Controle de Pátio</title>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<title>Sistema Operacional - Pátio</title>
 
 <style>
-:root{
---azul:#1565c0;
---verde:#2e7d32;
---vermelho:#c62828;
---laranja:#ef6c00;
---cinza:#eceff1;
-}
-
 body{
-font-family: Arial, Helvetica, sans-serif;
-margin:0;
-background:var(--cinza);
-padding:12px;
+  font-family:Arial, sans-serif;
+  margin:0;
+  padding:15px;
+  background:#f4f6f8;
 }
 
-h1{ text-align:center; }
-
-.box{
-background:white;
-padding:10px;
-border-radius:10px;
-margin-bottom:10px;
-}
-
-input,select,button{
-width:100%;
-padding:10px;
-margin-top:6px;
-font-size:15px;
-border-radius:8px;
-border:1px solid #ccc;
-}
-
-button{
-border:none;
-background:var(--azul);
-color:white;
-}
-
-.urgencias{
-background:#fff3e0;
-border-left:6px solid var(--laranja);
-padding:8px;
-border-radius:8px;
-margin-bottom:10px;
-font-size:14px;
+h1{
+  text-align:center;
 }
 
 .card{
-border-radius:10px;
-padding:10px;
-margin-bottom:10px;
-background:white;
-box-shadow:0 2px 4px rgba(0,0,0,0.08);
+  background:white;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:15px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.08);
 }
 
-.card.demurrage{ border-left:6px solid var(--vermelho); }
-.card.deadline{ border-left:6px solid var(--laranja); }
-.card.saiu{ opacity:0.55; }
-
-.tag{
-display:inline-block;
-padding:3px 6px;
-border-radius:6px;
-font-size:12px;
-margin-right:4px;
-background:#ddd;
+input, select, button{
+  padding:8px;
+  margin:4px 0;
+  width:100%;
+  border-radius:6px;
+  border:1px solid #ccc;
 }
 
-.vazio{ background:#b3e5fc; }
-.cheio{ background:#ffe082; }
-.login{ background:#c8e6c9; }
-.alianca{ background:#d1c4e9; }
-
-.small{ font-size:12px; color:#555; }
-
-.linha-botoes{
-margin-top:6px;
-display:flex;
-gap:6px;
+button{
+  background:#1976d2;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
 }
 
-.linha-botoes button{
-flex:1;
-font-size:12px;
-padding:8px;
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
 }
 
-.remove{ background:var(--vermelho); }
-.whats{ background:var(--verde); }
-.foto{ background:#6a1b9a; }
-
-img{
-width:100%;
-margin-top:6px;
-border-radius:8px;
+th,td{
+  padding:6px;
+  border-bottom:1px solid #ddd;
+  text-align:center;
 }
 
-.numero-seq{
-font-size:12px;
-font-weight:bold;
-color:#555;
-}
+.status-patio{color:green;font-weight:bold;}
+.status-saida{color:red;font-weight:bold;}
 </style>
 </head>
 
 <body>
 
-<h1>Controle de Pátio</h1>
+<h1>Controle Operacional de Pátio</h1>
 
-<div class="box">
-<input id="numero" placeholder="Número do contêiner">
+<div class="card">
+  <h3>Entrada de Contêiner</h3>
 
-<select id="tipo">
-<option>Vazio</option>
-<option>Cheio</option>
-</select>
+  <input type="text" id="numero" placeholder="Número do contêiner">
 
-<select id="empresa">
-<option>Login</option>
-<option>Aliança</option>
-</select>
+  <select id="tipo">
+    <option value="">Tipo</option>
+    <option>Vazio</option>
+    <option>Cheio</option>
+  </select>
 
-<input id="local" placeholder="Localização">
+  <select id="empresa">
+    <option value="">Empresa</option>
+    <option>Login</option>
+    <option>Aliança</option>
+  </select>
 
-<select id="urgencia">
-<option value="">Sem urgência</option>
-<option value="Demurrage">Demurrage</option>
-<option value="Deadline">Deadline</option>
-</select>
-
-<button onclick="adicionar()">Adicionar</button>
+  <button onclick="entrada()">Registrar Entrada</button>
 </div>
 
-<div class="box">
-<button onclick="pdfCompleto()">Gerar PDF</button>
+<div class="card">
+  <h3>Contêineres</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Número</th>
+        <th>Tipo</th>
+        <th>Empresa</th>
+        <th>Entrada</th>
+        <th>Saída</th>
+        <th>Status</th>
+        <th>Ação</th>
+      </tr>
+    </thead>
+    <tbody id="lista"></tbody>
+  </table>
 </div>
-
-<div class="urgencias" id="painelUrgencias"></div>
-
-<div id="lista"></div>
 
 <script>
-let db = JSON.parse(localStorage.getItem("patio_db") || "[]");
+
+let banco = JSON.parse(localStorage.getItem("patio_db") || "[]");
+let contadorSequencia = parseInt(localStorage.getItem("seq")) || 1;
+
+/* =========================
+   ENTRADA
+========================= */
+
+function entrada(){
+
+  const numero = document.getElementById("numero").value.trim();
+  const tipo = document.getElementById("tipo").value;
+  const empresa = document.getElementById("empresa").value;
+
+  if(!numero || !tipo || !empresa){
+    alert("Preencha todos os campos.");
+    return;
+  }
+
+  const novo = {
+    id: Date.now(),
+    sequencia: contadorSequencia++,
+    numero,
+    tipo,
+    empresa,
+    dataEntrada: new Date().toLocaleString(),
+    dataSaida: null,
+    motorista: null,
+    status: "Pátio"
+  };
+
+  banco.push(novo);
+  salvar();
+  limpar();
+  render();
+}
+
+/* =========================
+   SAÍDA
+========================= */
+
+function registrarSaida(id){
+
+  const motorista = prompt("Nome do motorista:");
+  if(!motorista) return;
+
+  const c = banco.find(x=>x.id===id);
+  if(!c || c.status==="Saída") return;
+
+  c.motorista = motorista;
+  c.dataSaida = new Date().toLocaleString();
+  c.status = "Saída";
+
+  salvar();
+  render();
+}
+
+/* =========================
+   SALVAR
+========================= */
 
 function salvar(){
-localStorage.setItem("patio_db", JSON.stringify(db));
+  localStorage.setItem("patio_db", JSON.stringify(banco));
+  localStorage.setItem("seq", contadorSequencia);
 }
 
-function agora(){
-return new Date().toLocaleString();
+/* =========================
+   LIMPAR
+========================= */
+
+function limpar(){
+  document.getElementById("numero").value="";
+  document.getElementById("tipo").value="";
+  document.getElementById("empresa").value="";
 }
 
-/* 🔥 FUNÇÃO CENTRAL DE ORDENAÇÃO */
-function ordenados(){
-return [...db].sort((a,b)=> a.numero.localeCompare(b.numero));
-}
+/* =========================
+   RENDER
+========================= */
 
-function adicionar(){
-let numero = document.getElementById("numero").value.trim().toUpperCase();
-if(!numero) return alert("Informe o número");
-
-db.push({
-id: Date.now(),
-numero,
-tipo: document.getElementById("tipo").value,
-empresa: document.getElementById("empresa").value,
-local: document.getElementById("local").value,
-urgencia: document.getElementById("urgencia").value,
-foto:null,
-entrada: agora(),
-saiu:false,
-saida:null,
-motorista:null
-});
-
-document.getElementById("numero").value="";
-document.getElementById("local").value="";
-document.getElementById("urgencia").value="";
-salvar();
-render();
-}
-
-function saida(id){
-let nome = prompt("Nome do motorista:");
-if(!nome) return;
-
-let c = db.find(x=>x.id===id);
-c.saiu = true;
-c.saida = agora();
-c.motorista = nome;
-
-salvar();
-render();
-}
-
-function remover(id){
-db = db.filter(x=>x.id!==id);
-salvar();
-render();
-}
-
-function whats(id){
-let c = db.find(x=>x.id===id);
-let msg =
-`Contêiner: ${c.numero}
-Tipo: ${c.tipo}
-Empresa: ${c.empresa}
-Local: ${c.local}
-${c.urgencia ? "⚠️ "+c.urgencia : ""}`;
-
-window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
-}
-
-function tirarFoto(id){
-let input = document.createElement("input");
-input.type="file";
-input.accept="image/*";
-input.capture="environment";
-
-input.onchange = e=>{
-let file = e.target.files[0];
-let reader = new FileReader();
-reader.onload = ()=>{
-let c = db.find(x=>x.id===id);
-c.foto = reader.result;
-salvar();
-render();
-};
-reader.readAsDataURL(file);
-};
-
-input.click();
-}
-
-/* PAINEL */
-function atualizarUrgencias(){
-let u = ordenados().filter(c=>c.urgencia && !c.saiu);
-
-if(!u.length){
-document.getElementById("painelUrgencias").innerHTML =
-"<b>Painel de Urgências:</b> Nenhuma.";
-return;
-}
-
-let html = "<b>Painel de Urgências:</b><br>";
-u.forEach((c,i)=>{
-html += `${i+1}. ${c.numero} (${c.urgencia})<br>`;
-});
-
-document.getElementById("painelUrgencias").innerHTML = html;
-}
-
-/* RENDER */
 function render(){
-atualizarUrgencias();
 
-let lista = document.getElementById("lista");
-lista.innerHTML="";
+  banco.sort((a,b)=> a.sequencia - b.sequencia);
 
-ordenados().forEach((c,i)=>{
-let div = document.createElement("div");
-div.className="card";
+  const tbody = document.getElementById("lista");
+  tbody.innerHTML="";
 
-if(c.urgencia==="Demurrage") div.classList.add("demurrage");
-if(c.urgencia==="Deadline") div.classList.add("deadline");
-if(c.saiu) div.classList.add("saiu");
+  banco.forEach(c=>{
 
-div.innerHTML=`
-<div class="numero-seq">#${i+1}</div>
-<b>${c.numero}</b><br>
+    const tr = document.createElement("tr");
 
-<span class="tag ${c.tipo==='Vazio'?'vazio':'cheio'}">${c.tipo}</span>
-<span class="tag ${c.empresa==='Login'?'login':'alianca'}">${c.empresa}</span>
-${c.urgencia?`<span class="tag">${c.urgencia}</span>`:""}
+    tr.innerHTML=`
+      <td>${c.sequencia}</td>
+      <td>${c.numero}</td>
+      <td>${c.tipo}</td>
+      <td>${c.empresa}</td>
+      <td>${c.dataEntrada}</td>
+      <td>${c.dataSaida || "-"}</td>
+      <td class="${c.status==="Pátio"?"status-patio":"status-saida"}">
+        ${c.status}
+      </td>
+      <td>
+        ${c.status==="Pátio" ?
+          `<button onclick="registrarSaida(${c.id})">Saída</button>` :
+          "✔"
+        }
+      </td>
+    `;
 
-<div>Local: ${c.local}</div>
-<div class="small">Entrada: ${c.entrada}</div>
-${c.saida?`<div class="small">Saída: ${c.saida}</div>`:""}
-${c.motorista?`<div class="small">Motorista: ${c.motorista}</div>`:""}
-
-${c.foto?`<img src="${c.foto}">`:""}
-
-<div class="linha-botoes">
-<button onclick="saida(${c.id})">Saída</button>
-<button class="foto" onclick="tirarFoto(${c.id})">Foto</button>
-<button class="whats" onclick="whats(${c.id})">Whats</button>
-<button class="remove" onclick="remover(${c.id})">Remover</button>
-</div>
-`;
-
-lista.appendChild(div);
-});
-}
-
-/* PDF */
-function pdfCompleto(){
-const { jsPDF } = window.jspdf;
-let doc = new jsPDF();
-
-doc.setFontSize(16);
-doc.text("Relatório Operacional de Contêineres", 105, 15, {align:"center"});
-doc.setFontSize(10);
-doc.text("Gerado em: " + agora(), 10, 22);
-
-let y = 30;
-
-ordenados().forEach((c,i)=>{
-doc.setFontSize(11);
-doc.text(`#${i+1} - ${c.numero}`,10,y);
-y+=6;
-
-doc.setFontSize(10);
-doc.text(`Tipo: ${c.tipo} | Empresa: ${c.empresa}`,10,y);
-y+=6;
-
-doc.text(`Localização: ${c.local}`,10,y);
-y+=6;
-
-doc.text(`Entrada: ${c.entrada}`,10,y);
-y+=6;
-
-if(c.urgencia){
-doc.text(`Urgência: ${c.urgencia}`,10,y);
-y+=6;
-}
-
-if(c.saiu){
-doc.text(`Saída: ${c.saida}`,10,y);
-y+=6;
-doc.text(`Motorista: ${c.motorista || "-"}`,10,y);
-y+=6;
-}
-
-if(c.foto){
-try{
-doc.addImage(c.foto,"JPEG",130,y-30,60,40);
-}catch(e){}
-}
-
-y+=12;
-
-if(y>260){
-doc.addPage();
-y=20;
-}
-});
-
-doc.save("relatorio_operacional.pdf");
+    tbody.appendChild(tr);
+  });
 }
 
 render();
+
 </script>
 
 </body>
